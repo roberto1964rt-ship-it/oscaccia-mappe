@@ -1,0 +1,25 @@
+{
+  "catalog_version": 1,
+  "generated_at": "2026-11-16T16:00:00+01:00",
+  "maps": [
+    {
+      "id": "it-lazio",
+      "name": "Lazio",
+      "country": "Italia",
+      "country_code": "IT",
+      "region": "Lazio",
+      "version": "0.0.0",
+      "status": "planned",
+      "format": "mbtiles",
+      "tile_format": "png",
+      "min_zoom": null,
+      "max_zoom": null,
+      "size_bytes": null,
+      "sha256": null,
+      "download_url": null,
+      "attribution": "© OpenStreetMap contributors",
+      "license": "ODbL",
+      "notes": "Pacchetto pilota in preparazione; download non ancora disponibile."
+    }
+  ]
+}
