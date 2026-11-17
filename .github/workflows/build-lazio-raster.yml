@@ -52,12 +52,11 @@ jobs:
           docker run --detach --name oscaccia-osm-renderer \
             --shm-size=1g -p 8080:80 -e THREADS=4 \
             -v "$PWD/data/osm-database:/data/database/" \
-            -v "$PWD/data/tile-cache:/data/tiles/" \
             overv/openstreetmap-tile-server:latest run
           ready=0
           for attempt in $(seq 1 90); do
             if curl --fail --silent --show-error \
-              http://127.0.0.1:8080/tile/0/0/0.png -o /tmp/osm-health.png; then
+              http://127.0.0.1:8080/tile/7/68/47.png -o /tmp/osm-health.png; then
               ready=1
               break
             fi
