@@ -1,0 +1,113 @@
+name: Build Lazio raster MBTiles
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/build-lazio-raster.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: oscaccia-lazio-map-build
+  cancel-in-progress: false
+
+jobs:
+  build-lazio:
+    name: Build and publish Lazio offline map
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Geofabrik Central Italy OSM extract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p data dist
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output data/centro-latest.osm.pbf \
+            https://download.geofabrik.de/europe/italy/centro-latest.osm.pbf
+          test -s data/centro-latest.osm.pbf
+          ls -lh data/centro-latest.osm.pbf
+
+      - name: Import OSM data into local raster renderer
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --shm-size=1g -e THREADS=4 \
+            -v "$PWD/data/centro-latest.osm.pbf:/data/region.osm.pbf:ro" \
+            -v "$PWD/data/osm-database:/data/database/" \
+            overv/openstreetmap-tile-server:latest import
+
+      - name: Start local OSM raster tile renderer
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --detach --name oscaccia-osm-renderer \
+            --shm-size=1g -p 8080:80 -e THREADS=4 \
+            -v "$PWD/data/osm-database:/data/database/" \
+            -v "$PWD/data/tile-cache:/data/tiles/" \
+            overv/openstreetmap-tile-server:latest run
+          ready=0
+          for attempt in $(seq 1 90); do
+            if curl --fail --silent --show-error \
+              http://127.0.0.1:8080/tile/0/0/0.png -o /tmp/osm-health.png; then
+              ready=1
+              break
+            fi
+            sleep 10
+          done
+          if [ "$ready" -ne 1 ]; then
+            docker logs oscaccia-osm-renderer
+            exit 1
+          fi
+          python3 -c "from pathlib import Path; p=Path('/tmp/osm-health.png').read_bytes(); assert p.startswith(bytes.fromhex('89504e470d0a1a0a'))"
+
+      - name: Build and validate raster MBTiles
+        run: |
+          python3 scripts/build_lazio_mbtiles.py \
+            --base-url http://127.0.0.1:8080/tile \
+            --output dist/oscaccia-lazio-v1.0.0.mbtiles \
+            --min-zoom 7 --max-zoom 15 --workers 6
+
+      - name: Stop local OSM renderer
+        if: always()
+        run: docker rm --force oscaccia-osm-renderer || true
+
+      - name: Publish GitHub Release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="it-lazio-v1.0.0"
+          ASSET="dist/oscaccia-lazio-v1.0.0.mbtiles"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ASSET" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "$ASSET" \
+              --title "OSCACCIA Lazio v1.0.0" \
+              --notes "MBTiles raster PNG per uso offline. Dati © OpenStreetMap contributors, licenza ODbL. Pacchetto verificato prima della pubblicazione." \
+              --repo "$GITHUB_REPOSITORY"
+          fi
+
+      - name: Publish verified metadata in the app catalog
+        env:
+          RELEASE_TAG: it-lazio-v1.0.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/publish_lazio_catalog.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add catalog/catalog.json
+          if ! git diff --cached --quiet; then
+            git commit -m "Publish verified Lazio offline map"
+            git push origin HEAD:main
+          fi
