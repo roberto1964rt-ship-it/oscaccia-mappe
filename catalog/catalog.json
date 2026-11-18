@@ -1,6 +1,6 @@
 {
   "catalog_version": 1,
-  "generated_at": "2026-11-17T17:09:30.228756+00:00",
+  "generated_at": "2026-11-18T11:16:50.102871+00:00",
   "maps": [
     {
       "id": "it-lazio",
@@ -26,6 +26,31 @@
         14.1,
         43.05
       ]
+    },
+    {
+      "id": "it-abruzzo",
+      "name": "Abruzzo",
+      "country": "Italia",
+      "country_code": "IT",
+      "region": "Abruzzo",
+      "version": "1.0.0",
+      "status": "available",
+      "format": "mbtiles",
+      "tile_format": "png",
+      "min_zoom": 7,
+      "max_zoom": 15,
+      "size_bytes": 269131776,
+      "sha256": "7428c43163896c8aa92caf9600d70a36da66d118115585215be7bb5f8d63a171",
+      "download_url": "https://github.com/roberto1964rt-ship-it/oscaccia-mappe/releases/download/it-abruzzo-v1.0.0/oscaccia-abruzzo-v1.0.0.mbtiles",
+      "attribution": "© OpenStreetMap contributors",
+      "license": "ODbL",
+      "bounds": [
+        12.7,
+        41.55,
+        14.9,
+        43.1
+      ],
+      "notes": "Pacchetto raster MBTiles PNG verificato automaticamente prima della pubblicazione."
     }
   ]
 }
